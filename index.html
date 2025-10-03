@@ -127,6 +127,29 @@
     }
     const finishBeep = ()=>{ beep(1040,170,'square',0.25); setTimeout(()=>beep(1040,170,'square',0.25), 260); setTimeout(()=>beep(1040,260,'square',0.25), 520); };
 
+    // ------- WAKE LOCK (prevent screen from sleeping) ---------
+    let wakeLock = null;
+    async function requestWakeLock(){
+      try{
+        if('wakeLock' in navigator){
+          wakeLock = await navigator.wakeLock.request('screen');
+          document.addEventListener('visibilitychange', handleWakeLockVisibility);
+        }
+      }catch(e){ console.warn('WakeLock request failed', e); }
+    }
+    async function handleWakeLockVisibility(){
+      try{
+        if(document.visibilityState === 'visible' && wakeLock && wakeLock.released){
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      }catch(e){ console.warn('WakeLock re-acquire failed', e); }
+    }
+    function releaseWakeLock(){
+      try{ if(wakeLock){ wakeLock.release(); } }catch(e){}
+      wakeLock = null;
+      document.removeEventListener('visibilitychange', handleWakeLockVisibility);
+    }
+
     // ------- SPEECH (spoken countdown + voice prompts) ---------
     let voices = [];
     function loadVoices(){ try{ if(!('speechSynthesis' in window)) return; voices = window.speechSynthesis.getVoices(); }catch{} }
@@ -195,7 +218,9 @@
       els.levelSelect.disabled = true; els.roundsInput.disabled = true; els.startBtn.disabled = true; els.resetBtn.disabled = false; els.pauseBtn.disabled = false;
       roundsTotal = Math.max(1, Math.min(20, +els.roundsInput.value||6));
       round = 1; els.roundLabel.textContent = `Round ${round} / ${roundsTotal}`;
-      setPhase(phases.GETREADY, config.countdown); startTimerLoop();
+      requestWakeLock();
+      setPhase(phases.GETREADY, config.countdown);
+      startTimerLoop();
     }
 
     function pauseResume(){
@@ -205,7 +230,8 @@
     }
 
     function stopAll(finished=false){
-      clearInterval(timerId); timerId = 0; paused = false; els.pauseBtn.textContent = 'Pause';
+      clearInterval(timerId);
+      releaseWakeLock(); timerId = 0; paused = false; els.pauseBtn.textContent = 'Pause';
       els.levelSelect.disabled = false; els.roundsInput.disabled = false; els.startBtn.disabled = false; els.pauseBtn.disabled = finished; els.resetBtn.disabled = true;
       if(!finished){ phase = phases.IDLE; els.phaseLabel.textContent = 'Get Ready'; els.roundLabel.textContent = `Round 1 / ${roundsTotal}`; els.timeDisplay.textContent = fmt(config.countdown); els.phaseBar.style.width = '0%'; }
     }
@@ -223,6 +249,7 @@
       const cases = [ {level:1, expect:{countdown:5, work:25, rest:20}}, {level:2, expect:{countdown:5, work:30, rest:22}}, {level:10, expect:{countdown:5, work:70, rest:38}} ];
       let ok = true; for(const c of cases){ const g = getLevelConfig(c.level); const pass = g.countdown===c.expect.countdown && g.work===c.expect.work && g.rest===c.expect.rest; if(!pass){ ok=false; console.error('[TEST FAIL]', c, 'got', g); } }
       if(typeof speakNumber!== 'function' || typeof sayGo!== 'function' || typeof sayExcellent!== 'function' || typeof sayChallengeCompleted!== 'function'){ ok=false; console.error('[TEST FAIL] speech helpers missing'); }
+      if(typeof requestWakeLock!== 'function' || typeof releaseWakeLock!== 'function'){ ok=false; console.error('[TEST FAIL] wake lock helpers missing'); }
       console[ok? 'log':'warn'](ok? '✅ Self-tests passed':'❌ Self-tests failed');
     }
 
