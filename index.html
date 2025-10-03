@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Bar Hanging Timer</title>
+  <style>
+    :root{ --bg:#0b1020; --card:#121833; --brand:#7aa2ff; --brand2:#40e0d0; --ok:#22c55e; --warn:#f59e0b; }
+    *{ box-sizing:border-box; }
+    html,body{height:100%;}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% 10%, #1a2455 0%, #0f1835 35%, #0b1020 100%);
+      color:#e8eefc; display:flex; align-items:center; justify-content:center; padding:max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    }
+    .app{ width:min(720px, 100%); }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      border:1px solid rgba(255,255,255,0.08); border-radius:20px; box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+      overflow:hidden;
+    }
+    header{ padding:14px 16px; display:flex; gap:10px; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.15); border-bottom:1px solid rgba(255,255,255,0.08); }
+    .brand{ font-weight:800; letter-spacing:0.4px; display:flex; align-items:center; gap:8px; font-size:14px; }
+    .brand span{ background:linear-gradient(90deg, var(--brand), var(--brand2)); -webkit-background-clip:text; color:transparent; }
+
+    .controls{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end; width:100%; }
+    .controls > *{ flex:1 1 120px; min-width:120px; }
+    .controls .wide{ flex:1 1 100%; min-width:100%; }
+
+    select, input[type="number"]{
+      background:#0e1530; color:#e8eefc; border:1px solid rgba(255,255,255,0.15); border-radius:12px; padding:10px 12px; font-size:14px; width:100%;
+    }
+    .btn{ appearance:none; border:0; border-radius:14px; padding:12px 16px; font-weight:800; letter-spacing:0.3px; cursor:pointer; color:#0b1020; background:linear-gradient(90deg, var(--brand), var(--brand2)); box-shadow:0 12px 30px rgba(64,224,208,0.25); width:100%; }
+    .btn.secondary{ background:#192142; color:#e8eefc; box-shadow:none; border:1px solid rgba(255,255,255,0.1);}    
+    .btn.ghost{ background:transparent; color:#cbd8ff; border:1px solid rgba(255,255,255,0.18);}    
+    .btn[disabled]{ opacity:0.5; cursor:not-allowed; }
+
+    .stage{ padding:22px; }
+    .panel{ background:rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.07); border-radius:16px; padding:20px; }
+
+    .big{ font-size: clamp(56px, 16vw, 120px); font-weight:900; line-height:1; letter-spacing:1px; text-align:center; margin:10px 0 6px; }
+    .phase{ text-align:center; font-weight:800; color:#a8b7e8; letter-spacing:1px; text-transform:uppercase; }
+    .round{ text-align:center; color:#c7d6ff; margin-bottom:8px; font-weight:700; }
+
+    .bar{ height:14px; background:#0c1330; border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); }
+    .bar > div{ height:100%; width:0%; background: linear-gradient(90deg, var(--brand), var(--brand2)); transition:width 0.2s ease; }
+
+    .phase-getready .panel.primary{ outline: 2px solid var(--brand2);} 
+    .phase-work .panel.primary{ outline: 2px solid var(--ok);} 
+    .phase-rest .panel.primary{ outline: 2px solid var(--warn);} 
+    .phase-complete .panel.primary{ outline: 2px solid var(--brand);} 
+
+    @media (min-width: 721px){
+      .controls > *{ flex:0 0 auto; min-width:auto; }
+      .controls .wide{ flex:0 0 auto; min-width:auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app card" id="app">
+    <header>
+      <div class="brand" aria-label="App title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.477 2 2 6.477 2 12c0 3.314 1.613 6.245 4.09 8.06.317.23.75.193 1.025-.083l2.648-2.648a.75.75 0 00.183-.75l-.79-2.369a.75.75 0 01.19-.77l5.09-5.09a2 2 0 112.829 2.829l-5.09 5.09a.75.75 0 01-.77.19l-2.369-.79a.75.75 0 00-.75.183l-2.648 2.648c-.276.275-.313.708-.083 1.025C5.755 20.387 8.686 22 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" fill="url(#g)"/><defs><linearGradient id="g" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"><stop stop-color="#7aa2ff"/><stop offset="1" stop-color="#40e0d0"/></linearGradient></defs></svg>
+        <span>Bar Hanging Timer</span>
+      </div>
+      <div class="controls">
+        <select id="levelSelect" title="Level">
+          <option value="1">Level 1</option>
+          <option value="2">Level 2</option>
+          <option value="3">Level 3</option>
+          <option value="4">Level 4</option>
+          <option value="5">Level 5</option>
+          <option value="6">Level 6</option>
+          <option value="7">Level 7</option>
+          <option value="8">Level 8</option>
+          <option value="9">Level 9</option>
+          <option value="10">Level 10</option>
+        </select>
+        <input id="roundsInput" type="number" min="1" max="20" value="6" title="Rounds"/>
+        <button class="btn wide" id="startBtn">Start</button>
+        <button class="btn secondary" id="pauseBtn" disabled>Pause</button>
+        <button class="btn ghost" id="resetBtn" disabled>Reset</button>
+        <button class="btn ghost" id="soundBtn" title="Toggle sound">🔈 Sound On</button>
+      </div>
+    </header>
+
+    <div class="stage" id="stage">
+      <div class="panel primary">
+        <div class="phase" id="phaseLabel">Get Ready</div>
+        <div class="round" id="roundLabel">Round 1 / 6</div>
+        <div class="big" id="timeDisplay">00:05</div>
+        <div class="bar" aria-label="phase progress"><div id="phaseBar"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ------- CONFIG ---------
+    function getLevelConfig(level){
+      level = Math.max(1, Math.min(10, +level||1));
+      return {
+        countdown: 5,  // fixed first-round get‑ready (always 5s)
+        work:      25 + (level-1)*5, // L1: 25s, +5 per level
+        rest:      20 + (level-1)*2, // L1: 20s, +2 per level
+      };
+    }
+
+    // ------- AUDIO (WebAudio; no external files) ---------
+    let audioCtx = null; let soundOn = true;
+    function ensureAudio(){
+      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    function beep(freq=880, ms=120, type='sine', vol=0.2){
+      if(!soundOn) return;
+      try{
+        ensureAudio();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = type; o.frequency.value = freq;
+        g.gain.value = vol; o.connect(g).connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+        g.gain.setValueAtTime(vol, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + ms/1000);
+        o.start(); o.stop(now + ms/1000);
+      }catch(e){ }
+    }
+    const finishBeep = ()=>{ beep(1040,170,'square',0.25); setTimeout(()=>beep(1040,170,'square',0.25), 260); setTimeout(()=>beep(1040,260,'square',0.25), 520); };
+
+    // ------- SPEECH (spoken countdown + voice prompts) ---------
+    let voices = [];
+    function loadVoices(){ try{ if(!('speechSynthesis' in window)) return; voices = window.speechSynthesis.getVoices(); }catch{} }
+    if('speechSynthesis' in window){ loadVoices(); window.speechSynthesis.onvoiceschanged = loadVoices; }
+    function pickVoice(){ if(!voices || voices.length===0) return null; const en = voices.find(v=>/en/i.test(v.lang)); return en || voices[0]; }
+    function speak(text){ try{ if(!soundOn) return; if(!('speechSynthesis' in window)) return; const u = new SpeechSynthesisUtterance(text); const v = pickVoice(); if(v) u.voice = v; u.rate = 0.95; u.pitch = 1.0; u.volume = 1.0; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }catch(e){} }
+    const numberWords = {1:'one',2:'two',3:'three',4:'four',5:'five'};
+    function speakNumber(n){ speak(numberWords[n] || String(n)); }
+    const sayGo = ()=>speak('Go');
+    const sayExcellent = ()=>speak('Excellent');
+    const sayChallengeCompleted = ()=>speak('Challenge completed');
+
+    // ------- STATE ---------
+    const els = {
+      levelSelect: document.getElementById('levelSelect'),
+      roundsInput: document.getElementById('roundsInput'),
+      startBtn: document.getElementById('startBtn'),
+      pauseBtn: document.getElementById('pauseBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      soundBtn: document.getElementById('soundBtn'),
+      phaseLabel: document.getElementById('phaseLabel'),
+      roundLabel: document.getElementById('roundLabel'),
+      timeDisplay: document.getElementById('timeDisplay'),
+      phaseBar: document.getElementById('phaseBar'),
+      stage: document.getElementById('stage'),
+    };
+
+    const phases = { GETREADY:'getready', WORK:'work', REST:'rest', COMPLETE:'complete', IDLE:'idle'};
+    let level = 1; let config = getLevelConfig(level);
+    let roundsTotal = 6; let round = 1; let phase = phases.IDLE; let phaseDur = 0; let endAt = 0; let timerId = 0; let lastShownWhole = -1; let paused = false; let remainingWhenPaused = 0;
+
+    const two = n => n<10? '0'+n : ''+n;
+    const fmt = s => { s=Math.max(0,Math.ceil(s)); const m=Math.floor(s/60), r=s%60; return `${two(m)}:${two(r)}`; };
+
+    function updateLevelUI(){ /* minimal UI now */ }
+
+    function setPhase(newPhase, durationSec, playTone=true){
+      phase = newPhase; phaseDur = durationSec; lastShownWhole = -1; endAt = Date.now() + durationSec*1000;
+      els.stage.classList.remove('phase-getready','phase-work','phase-rest','phase-complete');
+      if(phase===phases.GETREADY){ els.phaseLabel.textContent='Get Ready'; els.stage.classList.add('phase-getready'); }
+      if(phase===phases.WORK){ els.phaseLabel.textContent='Hang'; els.stage.classList.add('phase-work'); if(playTone) sayGo(); }
+      if(phase===phases.REST){ els.phaseLabel.textContent='Rest'; els.stage.classList.add('phase-rest'); }
+      if(phase===phases.COMPLETE){ els.phaseLabel.textContent='Complete'; els.stage.classList.add('phase-complete'); finishBeep(); }
+    }
+
+    function startTimerLoop(){ clearInterval(timerId); timerId = setInterval(tick, 100); }
+
+    function tick(){
+      const now = Date.now(); let remaining = Math.max(0, (endAt - now)/1000); const whole = Math.ceil(remaining);
+      if(whole !== lastShownWhole){
+        if(phase===phases.GETREADY && whole>0 && whole<=5) speakNumber(whole);
+        if(phase===phases.REST && whole>0 && whole<=5) speakNumber(whole);
+        lastShownWhole = whole;
+      }
+      els.timeDisplay.textContent = fmt(remaining);
+      els.phaseBar.style.width = Math.max(0, Math.min(100, (1 - remaining/phaseDur)*100)) + '%';
+
+      if(remaining <= 0.05){
+        if(phase===phases.GETREADY){ setPhase(phases.WORK, config.work); }
+        else if(phase===phases.WORK){ if(round < roundsTotal){ sayExcellent(); setPhase(phases.REST, config.rest, false); } else { sayChallengeCompleted(); setPhase(phases.COMPLETE, 0.001); stopAll(true); } }
+        else if(phase===phases.REST){ round++; els.roundLabel.textContent = `Round ${round} / ${roundsTotal}`; setPhase(phases.WORK, config.work); }
+      }
+    }
+
+    function startSession(){
+      els.levelSelect.disabled = true; els.roundsInput.disabled = true; els.startBtn.disabled = true; els.resetBtn.disabled = false; els.pauseBtn.disabled = false;
+      roundsTotal = Math.max(1, Math.min(20, +els.roundsInput.value||6));
+      round = 1; els.roundLabel.textContent = `Round ${round} / ${roundsTotal}`;
+      setPhase(phases.GETREADY, config.countdown); startTimerLoop();
+    }
+
+    function pauseResume(){
+      if(phase===phases.COMPLETE || phase===phases.IDLE) return;
+      if(!paused){ paused = true; clearInterval(timerId); timerId = 0; remainingWhenPaused = Math.max(0, Math.ceil((endAt - Date.now())/1000)); els.pauseBtn.textContent = 'Resume'; els.startBtn.disabled = true; }
+      else { paused = false; ensureAudio(); endAt = Date.now() + remainingWhenPaused*1000; lastShownWhole = -1; startTimerLoop(); els.pauseBtn.textContent = 'Pause'; }
+    }
+
+    function stopAll(finished=false){
+      clearInterval(timerId); timerId = 0; paused = false; els.pauseBtn.textContent = 'Pause';
+      els.levelSelect.disabled = false; els.roundsInput.disabled = false; els.startBtn.disabled = false; els.pauseBtn.disabled = finished; els.resetBtn.disabled = true;
+      if(!finished){ phase = phases.IDLE; els.phaseLabel.textContent = 'Get Ready'; els.roundLabel.textContent = `Round 1 / ${roundsTotal}`; els.timeDisplay.textContent = fmt(config.countdown); els.phaseBar.style.width = '0%'; }
+    }
+
+    // EVENTS
+    els.levelSelect.addEventListener('change', e=>{ level = +e.target.value; config = getLevelConfig(level); updateLevelUI(); });
+    els.roundsInput.addEventListener('change', e=>{ const v = Math.max(1, Math.min(20, +e.target.value||6)); e.target.value = v; });
+    els.startBtn.addEventListener('click', ()=>{ ensureAudio(); startSession(); });
+    els.pauseBtn.addEventListener('click', pauseResume);
+    els.resetBtn.addEventListener('click', ()=> stopAll(false));
+    els.soundBtn.addEventListener('click', ()=>{ soundOn = !soundOn; els.soundBtn.textContent = soundOn ? '🔈 Sound On' : '🔇 Sound Off'; if(soundOn) ensureAudio(); });
+
+    // SELF TESTS
+    function runSelfTests(){
+      const cases = [ {level:1, expect:{countdown:5, work:25, rest:20}}, {level:2, expect:{countdown:5, work:30, rest:22}}, {level:10, expect:{countdown:5, work:70, rest:38}} ];
+      let ok = true; for(const c of cases){ const g = getLevelConfig(c.level); const pass = g.countdown===c.expect.countdown && g.work===c.expect.work && g.rest===c.expect.rest; if(!pass){ ok=false; console.error('[TEST FAIL]', c, 'got', g); } }
+      if(typeof speakNumber!== 'function' || typeof sayGo!== 'function' || typeof sayExcellent!== 'function' || typeof sayChallengeCompleted!== 'function'){ ok=false; console.error('[TEST FAIL] speech helpers missing'); }
+      console[ok? 'log':'warn'](ok? '✅ Self-tests passed':'❌ Self-tests failed');
+    }
+
+    // INIT
+    (function init(){
+      try{ const last = JSON.parse(localStorage.getItem('hangTimerPrefs')||'{}'); if(last.level){ level = last.level; els.levelSelect.value = ''+level; } if(last.rounds){ els.roundsInput.value = last.rounds; } if(typeof last.soundOn === 'boolean') { soundOn = last.soundOn; } }catch{}
+      config = getLevelConfig(level); updateLevelUI(); els.soundBtn.textContent = soundOn ? '🔈 Sound On' : '🔇 Sound Off';
+      const persist = ()=>{ localStorage.setItem('hangTimerPrefs', JSON.stringify({ level:+els.levelSelect.value, rounds:+els.roundsInput.value, soundOn })); };
+      els.levelSelect.addEventListener('change', persist); els.roundsInput.addEventListener('change', persist); els.soundBtn.addEventListener('click', persist);
+      els.timeDisplay.textContent = fmt(config.countdown);
+      runSelfTests();
+    })();
+  </script>
+</body>
+</html>
